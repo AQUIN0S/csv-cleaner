@@ -13,5 +13,9 @@ You'll also want Git to be set up on your machine so that you can pull this repo
 ```bash
 git clone git@github.com:AQUIN0S/csv-cleaner.git
 cd csv-cleaner
-cargo run
+cargo run -- <path_to_csv_files>
 ```
+
+> Note that `<path_to_csv_files>` should be a directory that contains only csv files,
+> and nothing else. The csv files will be cleaned as best as this tool can do and sent
+> to an `out/` directory inside the given directory.
