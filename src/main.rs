@@ -4,10 +4,27 @@ use std::ops::AddAssign;
 use std::path::Path;
 use std::path::PathBuf;
 use std::{env, fs};
+use structopt::StructOpt;
 
 enum CleaningResult<T> {
     Clean(T),
     Dirty(T),
+}
+
+/// Options for calling this program on the command line
+#[derive(StructOpt, Debug)]
+#[structopt(
+    name = "CSV Cleaner",
+    about = "A utility program that cleans up csv files"
+)]
+struct CliOpts {
+    /// Input directory to find CSV files in
+    #[structopt(parse(from_os_str), short = "d", long = "directory")]
+    input_directory: PathBuf,
+
+    /// Use Windows or Linux style line endings (\r\n or \n respectively), defaults to linux (not implemented yet)
+    #[structopt(short = "le", long = "line-ending")]
+    line_ending: Option<String>,
 }
 
 use CleaningResult::{Clean, Dirty};
@@ -58,7 +75,11 @@ fn clean_file(directory: &str, file_path: &PathBuf) {
             if let Ok(line) = result {
                 if read_first_line {
                     if line.matches(',').count() + 1 != num_columns {
-                        eprintln!("Houston, we have a problem! Number of commas in line {} of file {} don't match the number of columns!", line_number, file_path.as_os_str().to_str().unwrap());
+                        eprintln!(
+                            "Please review line {} of file {} don't match the number of columns!",
+                            line_number,
+                            file_path.as_os_str().to_str().unwrap()
+                        );
                         return;
                     }
                 } else {
@@ -123,6 +144,9 @@ fn clean_line(line: String) -> CleaningResult<String> {
             result.add_assign("\"");
             open_quote = false;
             was_dirty = true;
+        } else if character == '\\' {
+            was_dirty = true;
+            continue;
         }
         result.add_assign(character.to_string().as_str());
     }
@@ -135,11 +159,15 @@ fn clean_line(line: String) -> CleaningResult<String> {
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        println!("Usage: {} <directory_path_containing_csv_files>", args[0]);
-        return;
-    }
+    let opts = CliOpts::from_args();
 
-    run_through_directory(String::from(args.get(1).unwrap().trim_end_matches('/')) + "/");
+    println!("{:?}", opts);
+
+    // let args: Vec<String> = env::args().collect();
+    // if args.len() != 2 {
+    //     println!("Usage: {} <directory_path_containing_csv_files>", args[0]);
+    //     return;
+    // }
+
+    // run_through_directory(String::from(args.get(1).unwrap().trim_end_matches('/')) + "/");
 }
