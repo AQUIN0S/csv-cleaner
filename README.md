@@ -20,6 +20,7 @@ cargo run -- <path_to_csv_files>
 > and nothing else. The csv files will be cleaned as best as this tool can do and sent
 > to an `out/` directory inside the given directory.
 
-## Known Issues
+## Quirks
 
-This tool will count the number of headers there are in a `.csv` file, and will not deal with lines where there are more commas in a line than suggested by the number of headers, quoted or not. It should instead just show an error telling which line had the problem, and move on without passing the data in that line to the output file.
+* This tool assumes that there are no commas in any of the actual cells of the data. What I mean by this is that in any row of a `.csv` file, each comma (whether within quotes or not) is considered to be a column delimiter. If a row looks to have the right number of columns but the wrong number/placement of quotes, it will helpfully place new quotes just before the next comma. That's, pretty much the purpose of this whole thing.
+* The count of columns is derived from the first row (considered the header row), so the above point means that if any header data actually contains commas, that will mess up that file's whole output. There is no way currently to counter that except to remove commas in the header row's data elements itself, but it should be relatively obvious if most of the lines in the file look to have the wrong number of columns.
