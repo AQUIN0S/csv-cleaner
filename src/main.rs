@@ -24,6 +24,10 @@ struct CliOpts {
     /// Use Linux style line endings ("\n"). If not set, use Windows style ("\r\n").
     #[structopt(short, long)]
     linux: bool,
+
+    /// Quotes are to be unescaped. I can't really think of a situation where this would be set though...
+    #[structopt(short, long)]
+    unescaped: bool,
 }
 
 use CleaningResult::{Clean, Dirty};
@@ -127,7 +131,7 @@ fn clean_file<'a>(options: &'a CliOpts, file_path: &'a Path) -> Vec<String> {
                     println!("Number of columns: {}", num_columns);
                     read_first_line = true;
                 }
-                let mut cleaned_line = match clean_line(line) {
+                let mut cleaned_line = match clean_line(options, line) {
                     Clean(cleaned_line) => cleaned_line,
                     Dirty(cleaned_line) => {
                         println!();
@@ -192,7 +196,7 @@ fn clean_file<'a>(options: &'a CliOpts, file_path: &'a Path) -> Vec<String> {
     problems
 }
 
-fn clean_line(line: String) -> CleaningResult<String> {
+fn clean_line(opts: &CliOpts, line: String) -> CleaningResult<String> {
     let mut result = String::new();
 
     let mut open_quote = false;
@@ -201,8 +205,9 @@ fn clean_line(line: String) -> CleaningResult<String> {
     for character in line.chars() {
         if character == '\"' {
             open_quote = !open_quote;
+            result += if opts.unescaped { "" } else { "\\" };
         } else if character == ',' && open_quote {
-            result += "\"";
+            result += if opts.unescaped { "\"" } else { "\\\"" };
             open_quote = false;
             was_dirty = true;
         } else if character == '\\' {
