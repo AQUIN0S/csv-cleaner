@@ -28,6 +28,19 @@ struct CliOpts {
     /// Quotes are to be unescaped. I can't really think of a situation where this would be set though...
     #[structopt(short, long)]
     unescaped: bool,
+
+    /// Don't close quotes in cells. Usually best not to set this as it will result in less clean data, though it will
+    /// also mean the result is closer to the original.
+    #[structopt(short, long)]
+    unclosed_quotes: bool,
+
+    /// Remove quotes altogether. This may or may not help...
+    #[structopt(short, long)]
+    remove_quotes: bool,
+
+    /// Tabs are used instead of commas
+    #[structopt(short, long)]
+    tabs: bool,
 }
 
 use CleaningResult::{Clean, Dirty};
@@ -118,7 +131,9 @@ fn clean_file<'a>(options: &'a CliOpts, file_path: &'a Path) -> Vec<String> {
 
             if let Ok(line) = result {
                 if read_first_line {
-                    if line.matches(',').count() + 1 != num_columns {
+                    if line.matches(if options.tabs { '\t' } else { ',' }).count() + 1
+                        != num_columns
+                    {
                         let error = format!("Please review line {} of file {}, number of columns in row doesn't match the number of columns in header! This line has not been written into the output file",
                             line_number,
                             file_path.as_os_str().to_str().unwrap());
@@ -127,7 +142,7 @@ fn clean_file<'a>(options: &'a CliOpts, file_path: &'a Path) -> Vec<String> {
                         continue;
                     }
                 } else {
-                    num_columns = line.matches(',').count() + 1;
+                    num_columns = line.matches(if options.tabs { '\t' } else { ',' }).count() + 1;
                     println!("Number of columns: {}", num_columns);
                     read_first_line = true;
                 }
@@ -201,20 +216,39 @@ fn clean_line(opts: &CliOpts, line: String) -> CleaningResult<String> {
 
     let mut open_quote = false;
     let mut was_dirty = false;
+    let mut prev_char: Option<char> = None;
 
     for character in line.chars() {
         if character == '\"' {
+            if opts.remove_quotes {
+                was_dirty = true;
+                continue;
+            }
+            if prev_char == None || prev_char == Some(if opts.tabs { '\t' } else { ',' }) {
+                // TODO: Implement a thing
+            } else {
+                // TODO: Implement another thing
+            }
             open_quote = !open_quote;
             result += if opts.unescaped { "" } else { "\\" };
-        } else if character == ',' && open_quote {
+        } else if character == if opts.tabs { '\t' } else { ',' }
+            && open_quote
+            && !opts.unclosed_quotes
+        {
             result += if opts.unescaped { "\"" } else { "\\\"" };
             open_quote = false;
             was_dirty = true;
+        } else if character == '\n' || character == '\r' {
+            if opts.unescaped || opts.remove_quotes || opts.unclosed_quotes {
+                was_dirty = true;
+                continue;
+            }
         } else if character == '\\' {
             was_dirty = true;
             continue;
         }
         result += character.to_string().as_str();
+        prev_char = Some(character);
     }
 
     if was_dirty {
